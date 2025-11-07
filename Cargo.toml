@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "hello-world",
+    "ownership-exercises",
 ]
 resolver = "2"
 
