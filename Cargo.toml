@@ -2,6 +2,7 @@
 members = [
     "hello-world",
     "ownership-exercises",
+    "text-analyzer",
 ]
 resolver = "2"
 

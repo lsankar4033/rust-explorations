@@ -1,0 +1,8 @@
+The quick brown fox jumps over the lazy dog.
+The dog was not amused by the fox's antics.
+Meanwhile, the brown fox continued jumping and playing.
+This is a sample text file for testing the text analyzer.
+The text analyzer should count words, find patterns, and provide statistics.
+Word frequency analysis is a common task in text processing.
+The most common words in English are often articles like "the" and "a".
+Processing text requires careful handling of punctuation and whitespace.
