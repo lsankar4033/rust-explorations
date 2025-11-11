@@ -1,6 +1,6 @@
-// Polygon RPC Clients for HTTP and WebSocket
+// EVM RPC Clients for HTTP and WebSocket
 
-use crate::provider::{Chain, Provider};
+use crate::client::{Chain, Provider};
 use ethers::providers::{Http, Middleware, Provider as EthersProvider, Ws};
 use eyre::Result;
 use std::sync::Arc;

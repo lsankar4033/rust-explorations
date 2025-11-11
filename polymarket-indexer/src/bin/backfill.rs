@@ -6,7 +6,7 @@
 
 use eyre::Result;
 use polymarket_indexer::client::evm::HttpClient;
-use polymarket_indexer::provider::{Chain, Provider};
+use polymarket_indexer::client::{Chain, Provider};
 use tracing::{info, Level};
 use tracing_subscriber;
 
