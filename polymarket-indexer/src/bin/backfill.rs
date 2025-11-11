@@ -5,7 +5,7 @@
 //   cargo run --bin backfill  (defaults to last 1000 blocks)
 
 use eyre::Result;
-use polymarket_indexer::client::HttpClient;
+use polymarket_indexer::client::evm::HttpClient;
 use polymarket_indexer::provider::{Chain, Provider};
 use tracing::{info, Level};
 use tracing_subscriber;
