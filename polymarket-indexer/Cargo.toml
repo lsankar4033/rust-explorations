@@ -11,3 +11,12 @@ tracing-subscriber = "0.3"
 eyre = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 hex = "0.4"
+dotenv = "0.15"
+
+[[bin]]
+name = "backfill"
+path = "src/bin/backfill.rs"
+
+[[bin]]
+name = "stream"
+path = "src/bin/stream.rs"

@@ -1,40 +1,58 @@
-// Polygon RPC Client
-//
-// Handles connection to Alchemy API for both HTTP and WebSocket
+// Polygon RPC Clients for HTTP and WebSocket
 
-use ethers::providers::{Http, Provider, Ws};
+use crate::provider::{Chain, Provider};
+use ethers::providers::{Http, Middleware, Provider as EthersProvider, Ws};
 use eyre::Result;
 use std::sync::Arc;
 
-pub struct PolygonClient {
-    http: Arc<Provider<Http>>,
-    // WebSocket provider will be added when we implement live mode
-    // ws: Arc<Provider<Ws>>,
+/// HTTP client for historical queries (eth_getLogs)
+pub struct HttpClient {
+    provider: Arc<EthersProvider<Http>>,
 }
 
-impl PolygonClient {
-    /// Create a new Polygon client with Alchemy API key
-    pub async fn new(alchemy_api_key: &str) -> Result<Self> {
-        // TODO: Build HTTP endpoint URL with API key
-        // Format: https://polygon-mainnet.g.alchemy.com/v2/{api_key}
+impl HttpClient {
+    /// Create a new HTTP client for the given provider and chain
+    pub async fn new(provider: Provider, chain: Chain, api_key: Option<&str>) -> Result<Self> {
+        let url = provider.http_url(chain, api_key);
+        let http_provider = EthersProvider::<Http>::try_from(url)?;
 
-        // TODO: Create HTTP provider
-
-        // TODO: Create WebSocket provider (for live mode)
-        // Format: wss://polygon-mainnet.g.alchemy.com/v2/{api_key}
-
-        todo!("Implement PolygonClient::new")
+        Ok(Self {
+            provider: Arc::new(http_provider),
+        })
     }
 
     /// Get the current block number
     pub async fn get_block_number(&self) -> Result<u64> {
-        // TODO: Use provider.get_block_number()
-        todo!("Implement get_block_number")
+        let block_number = self.provider.get_block_number().await?;
+        Ok(block_number.as_u64())
     }
 
-    // TODO: Add method to get historical logs
+    // TODO: Add method to fetch historical logs
     // pub async fn get_logs(&self, filter: Filter) -> Result<Vec<Log>>
+}
 
-    // TODO: Add method to subscribe to logs (WebSocket)
+/// WebSocket client for live event streaming (eth_subscribe)
+pub struct WsClient {
+    provider: Arc<EthersProvider<Ws>>,
+}
+
+impl WsClient {
+    /// Create a new WebSocket client for the given provider and chain
+    pub async fn new(provider: Provider, chain: Chain, api_key: Option<&str>) -> Result<Self> {
+        let url = provider.ws_url(chain, api_key);
+        let ws_provider = EthersProvider::<Ws>::connect(url).await?;
+
+        Ok(Self {
+            provider: Arc::new(ws_provider),
+        })
+    }
+
+    /// Get the current block number
+    pub async fn get_block_number(&self) -> Result<u64> {
+        let block_number = self.provider.get_block_number().await?;
+        Ok(block_number.as_u64())
+    }
+
+    // TODO: Add method to subscribe to logs
     // pub async fn subscribe_logs(&self, filter: Filter) -> Result<impl Stream<Item = Log>>
 }

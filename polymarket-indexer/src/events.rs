@@ -1,13 +1,11 @@
 // TokenRegistered Event Definition and Processing
 //
 // Event: TokenRegistered(uint256 indexed token0, uint256 indexed token1, bytes32 indexed conditionId)
-// Emitted by: CTFExchange contract at 0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E
+// Emitted by: CTFExchange contract
 
+use crate::constants::CTF_EXCHANGE_ADDRESS;
 use ethers::types::{Address, U256};
 use std::str::FromStr;
-
-// CTFExchange contract address on Polygon mainnet
-pub const CTF_EXCHANGE_ADDRESS: &str = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
 
 /// TokenRegistered event structure
 ///
