@@ -3,9 +3,8 @@
 // Event: TokenRegistered(uint256 indexed token0, uint256 indexed token1, bytes32 indexed conditionId)
 // Emitted by: CTFExchange contract
 
-use crate::polymarket::constants::CTF_EXCHANGE_ADDRESS;
-use ethers::types::{Address, U256};
-use std::str::FromStr;
+use ethers::types::{Log, U256};
+use eyre::{eyre, Result};
 
 /// TokenRegistered event structure
 ///
@@ -25,6 +24,52 @@ pub struct TokenRegistered {
 }
 
 impl TokenRegistered {
+    /// Parse a TokenRegistered event from a raw log
+    ///
+    /// Expected log structure:
+    /// - topics[0]: Event signature (keccak256 of "TokenRegistered(uint256,uint256,bytes32)")
+    /// - topics[1]: token0 (first indexed parameter)
+    /// - topics[2]: token1 (second indexed parameter)
+    /// - topics[3]: conditionId (third indexed parameter)
+    pub fn from_log(log: &Log) -> Result<Self> {
+        // Validate we have exactly 4 topics (signature + 3 indexed params)
+        if log.topics.len() != 4 {
+            return Err(eyre!(
+                "Invalid TokenRegistered log: expected 4 topics, got {}",
+                log.topics.len()
+            ));
+        }
+
+        // Extract token0 from topics[1]
+        let token0 = U256::from(log.topics[1].as_bytes());
+
+        // Extract token1 from topics[2]
+        let token1 = U256::from(log.topics[2].as_bytes());
+
+        // Extract conditionId from topics[3] (convert H256 to [u8; 32])
+        let condition_id: [u8; 32] = log.topics[3].0;
+
+        // Extract block number
+        let block_number = log
+            .block_number
+            .ok_or_else(|| eyre!("Log missing block_number"))?
+            .as_u64();
+
+        // Extract transaction hash
+        let tx_hash = log
+            .transaction_hash
+            .ok_or_else(|| eyre!("Log missing transaction_hash"))?
+            .to_string();
+
+        Ok(TokenRegistered {
+            token0,
+            token1,
+            condition_id,
+            block_number,
+            tx_hash,
+        })
+    }
+
     /// Pretty-print the event to console
     pub fn display(&self) {
         println!("=================================");
@@ -36,11 +81,12 @@ impl TokenRegistered {
         println!("  Token 1 (NO):  {}", self.token1);
         println!("=================================");
     }
-}
 
-/// Get the CTFExchange contract address as an Address type
-pub fn ctf_exchange_address() -> Address {
-    Address::from_str(CTF_EXCHANGE_ADDRESS).expect("Invalid CTF_EXCHANGE_ADDRESS constant")
+    /// Get the condition ID as a hex string (with 0x prefix)
+    /// Used for querying the Gamma API
+    pub fn condition_id_hex(&self) -> String {
+        format!("0x{}", hex::encode(self.condition_id))
+    }
 }
 
 // TODO: Add derive(EthEvent) once we implement event decoding
