@@ -2,6 +2,7 @@
 
 use crate::client::{Chain, Provider};
 use ethers::providers::{Http, Middleware, Provider as EthersProvider, Ws};
+use ethers::types::{Filter, Log};
 use eyre::Result;
 use std::sync::Arc;
 
@@ -27,8 +28,11 @@ impl HttpClient {
         Ok(block_number.as_u64())
     }
 
-    // TODO: Add method to fetch historical logs
-    // pub async fn get_logs(&self, filter: Filter) -> Result<Vec<Log>>
+    /// Fetch historical logs matching the given filter
+    pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>> {
+        let logs = self.provider.get_logs(filter).await?;
+        Ok(logs)
+    }
 }
 
 /// WebSocket client for live event streaming (eth_subscribe)
