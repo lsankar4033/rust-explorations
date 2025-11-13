@@ -4,6 +4,3 @@
 ///
 /// This is the main exchange contract that emits TokenRegistered events
 pub const CTF_EXCHANGE_ADDRESS: &str = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
-
-/// Conditional Tokens Framework contract address (Polygon mainnet)
-pub const CTF_CONTRACT_ADDRESS: &str = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045";
