@@ -5,6 +5,6 @@
 // - Event definitions
 // - Core indexing operations
 
-pub mod addresses;
+pub mod constants;
 pub mod core;
 pub mod events;

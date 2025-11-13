@@ -9,7 +9,7 @@ use ethers::types::{Filter, H160, H256};
 use eyre::Result;
 use polymarket_indexer::client::evm::HttpClient;
 use polymarket_indexer::client::{Chain, Provider};
-use polymarket_indexer::polymarket::addresses::CTF_EXCHANGE_ADDRESS;
+use polymarket_indexer::polymarket::constants::CTF_EXCHANGE_ADDRESS;
 use std::str::FromStr;
 use tracing::{info, Level};
 
@@ -34,7 +34,6 @@ async fn main() -> Result<()> {
     info!("Current block: {}", current_block);
 
     let target_block = 78975130;
-
     info!("Fetching logs from block {}", target_block);
 
     // Parse CTF Exchange address

@@ -3,7 +3,7 @@
 // Event: TokenRegistered(uint256 indexed token0, uint256 indexed token1, bytes32 indexed conditionId)
 // Emitted by: CTFExchange contract
 
-use crate::polymarket::addresses::CTF_EXCHANGE_ADDRESS;
+use crate::polymarket::constants::CTF_EXCHANGE_ADDRESS;
 use ethers::types::{Address, U256};
 use std::str::FromStr;
 
