@@ -1,10 +1,10 @@
 // Polymarket-specific business logic module
 //
 // Contains all Polymarket-specific functionality including:
-// - Contract addresses
+// - Contract addresses and constants
 // - Event definitions
-// - Core indexing operations
+// - Market metadata structures
 
 pub mod constants;
-pub mod core;
 pub mod events;
+pub mod market;
