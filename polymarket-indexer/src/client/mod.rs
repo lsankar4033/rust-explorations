@@ -1,4 +1,5 @@
 pub mod evm;
+pub mod gamma;
 
 // RPC Provider and Chain Configuration
 
