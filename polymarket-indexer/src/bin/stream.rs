@@ -7,7 +7,6 @@ use eyre::Result;
 use polymarket_indexer::client::evm::WsClient;
 use polymarket_indexer::client::{Chain, Provider};
 use tracing::{info, Level};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<()> {
