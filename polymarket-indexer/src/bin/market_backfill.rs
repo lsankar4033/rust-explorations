@@ -16,6 +16,7 @@ use polymarket_indexer::polymarket::constants::{
     ctf_exchange_address, token_registered_event_signature,
 };
 use polymarket_indexer::polymarket::events::TokenRegistered;
+use std::collections::HashMap;
 use std::env;
 use tracing::{info, warn, Level};
 
@@ -52,23 +53,31 @@ async fn main() -> Result<()> {
     let logs = evm_client.get_logs(&filter).await?;
     info!("Found {} TokenRegistered events", logs.len());
 
-    // Process each event
+    // Deduplicate by condition_id (each market emits 2 events with swapped tokens)
+    let mut unique_events: HashMap<String, TokenRegistered> = HashMap::new();
+    for log in &logs {
+        match TokenRegistered::from_log(log) {
+            Ok(event) => {
+                unique_events.insert(event.condition_id_hex(), event);
+            }
+            Err(e) => {
+                warn!("Failed to parse log: {}", e);
+            }
+        }
+    }
+
+    info!(
+        "Unique markets: {} (deduped from {} events)",
+        unique_events.len(),
+        logs.len()
+    );
+
+    // Process each unique market
     let mut inserted = 0;
     let mut skipped = 0;
     let mut failed = 0;
 
-    for log in logs {
-        let event = match TokenRegistered::from_log(&log) {
-            Ok(e) => e,
-            Err(e) => {
-                warn!("Failed to parse log: {}", e);
-                failed += 1;
-                continue;
-            }
-        };
-
-        let condition_id = event.condition_id_hex();
-
+    for (condition_id, event) in unique_events {
         // Check if already in DB
         if markets::get_market_by_condition_id(&db_pool, &condition_id)
             .await?
