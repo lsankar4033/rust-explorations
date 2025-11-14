@@ -1,0 +1,150 @@
+// Market Backfill - Index historical TokenRegistered events and enrich with metadata
+//
+// Usage:
+//   cargo run --bin market_backfill -- --last-days 7
+//   cargo run --bin market_backfill -- --from-block 50000000 --to-block 50001000
+
+use ethers::types::Filter;
+use eyre::Result;
+use polymarket_indexer::client::evm::HttpClient;
+use polymarket_indexer::client::gamma::GammaClient;
+use polymarket_indexer::client::{Chain, Provider};
+use polymarket_indexer::db::{create_pool, markets};
+use polymarket_indexer::polymarket::constants::{
+    ctf_exchange_address, token_registered_event_signature,
+};
+use polymarket_indexer::polymarket::events::TokenRegistered;
+use std::env;
+use tracing::{info, warn, Level};
+
+/// Polygon block time: ~2 seconds
+const POLYGON_BLOCK_TIME_SECS: i64 = 2;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    dotenv::dotenv().ok();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+
+    info!("Market Backfill starting...");
+
+    // Parse CLI arguments
+    let args: Vec<String> = env::args().collect();
+    let (from_block, to_block) = parse_block_range(&args).await?;
+
+    info!("Backfill range: blocks {} to {}", from_block, to_block);
+
+    // Initialize clients
+    let api_key = env::var("ALCHEMY_API_KEY").expect("ALCHEMY_API_KEY not set");
+    let evm_client = HttpClient::new(Provider::Alchemy, Chain::Polygon, Some(&api_key)).await?;
+    let gamma_client = GammaClient::new();
+    let db_pool = create_pool().await?;
+
+    // Fetch TokenRegistered events
+    info!("Fetching TokenRegistered events...");
+    let filter = Filter::new()
+        .address(ctf_exchange_address())
+        .topic0(token_registered_event_signature())
+        .from_block(from_block)
+        .to_block(to_block);
+
+    let logs = evm_client.get_logs(&filter).await?;
+    info!("Found {} TokenRegistered events", logs.len());
+
+    // Process each event
+    let mut inserted = 0;
+    let mut skipped = 0;
+    let mut failed = 0;
+
+    for log in logs {
+        let event = match TokenRegistered::from_log(&log) {
+            Ok(e) => e,
+            Err(e) => {
+                warn!("Failed to parse log: {}", e);
+                failed += 1;
+                continue;
+            }
+        };
+
+        let condition_id = event.condition_id_hex();
+
+        // Check if already in DB
+        if markets::get_market_by_condition_id(&db_pool, &condition_id)
+            .await?
+            .is_some()
+        {
+            skipped += 1;
+            continue;
+        }
+
+        // Fetch metadata from Gamma API
+        let metadata = match gamma_client.get_market_with_retry(&condition_id, 5).await {
+            Ok(Some(m)) => Some(m),
+            Ok(None) => {
+                warn!("No metadata found for {}", condition_id);
+                None
+            }
+            Err(e) => {
+                warn!("Failed to fetch metadata for {}: {}", condition_id, e);
+                None
+            }
+        };
+
+        // Insert into database
+        match markets::upsert_market(&db_pool, &event, metadata.as_ref()).await {
+            Ok(_) => {
+                info!("✓ Inserted market {}", condition_id);
+                inserted += 1;
+            }
+            Err(e) => {
+                warn!("Failed to insert market {}: {}", condition_id, e);
+                failed += 1;
+            }
+        }
+    }
+
+    // Summary
+    info!("Backfill complete!");
+    info!("  Inserted: {}", inserted);
+    info!("  Skipped (already in DB): {}", skipped);
+    info!("  Failed: {}", failed);
+
+    Ok(())
+}
+
+async fn parse_block_range(args: &[String]) -> Result<(u64, u64)> {
+    // Check for --last-days argument
+    if let Some(pos) = args.iter().position(|a| a == "--last-days") {
+        let days: i64 = args
+            .get(pos + 1)
+            .and_then(|s| s.parse().ok())
+            .expect("--last-days requires a number");
+
+        let api_key = env::var("ALCHEMY_API_KEY").expect("ALCHEMY_API_KEY not set");
+        let client = HttpClient::new(Provider::Alchemy, Chain::Polygon, Some(&api_key)).await?;
+        let current_block = client.get_block_number().await?;
+
+        // Estimate blocks based on block time
+        let blocks_per_day = 86400 / POLYGON_BLOCK_TIME_SECS;
+        let blocks_to_go_back = (days * blocks_per_day) as u64;
+        let from_block = current_block.saturating_sub(blocks_to_go_back);
+
+        return Ok((from_block, current_block));
+    }
+
+    // Check for --from-block and --to-block
+    let from_block = args
+        .iter()
+        .position(|a| a == "--from-block")
+        .and_then(|pos| args.get(pos + 1))
+        .and_then(|s| s.parse().ok())
+        .expect("--from-block required (or use --last-days)");
+
+    let to_block = args
+        .iter()
+        .position(|a| a == "--to-block")
+        .and_then(|pos| args.get(pos + 1))
+        .and_then(|s| s.parse().ok())
+        .expect("--to-block required (or use --last-days)");
+
+    Ok((from_block, to_block))
+}
