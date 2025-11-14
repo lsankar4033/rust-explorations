@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO markets (\n            condition_id, token0, token1, block_number, tx_hash,\n            question, slug, category, outcomes, start_date, end_date,\n            metadata_fetched_at\n        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n        ON CONFLICT (condition_id) DO UPDATE SET\n            question = COALESCE(EXCLUDED.question, markets.question),\n            slug = COALESCE(EXCLUDED.slug, markets.slug),\n            category = COALESCE(EXCLUDED.category, markets.category),\n            outcomes = COALESCE(EXCLUDED.outcomes, markets.outcomes),\n            start_date = COALESCE(EXCLUDED.start_date, markets.start_date),\n            end_date = COALESCE(EXCLUDED.end_date, markets.end_date),\n            metadata_fetched_at = COALESCE(EXCLUDED.metadata_fetched_at, markets.metadata_fetched_at),\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9463753831113d7bd868a95490f5a59482f0af93bf7dd63a2b021df84d105c9c"
+}
