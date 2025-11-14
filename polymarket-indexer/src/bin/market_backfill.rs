@@ -1,7 +1,9 @@
 // Market Backfill - Index historical TokenRegistered events and enrich with metadata
 //
 // Usage:
-//   cargo run --bin market_backfill -- --last-days 7
+//   cargo run --bin market_backfill -- --days 7
+//   cargo run --bin market_backfill -- --hours 6
+//   cargo run --bin market_backfill -- --minutes 30
 //   cargo run --bin market_backfill -- --from-block 50000000 --to-block 50001000
 
 use ethers::types::Filter;
@@ -112,20 +114,36 @@ async fn main() -> Result<()> {
 }
 
 async fn parse_block_range(args: &[String]) -> Result<(u64, u64)> {
-    // Check for --last-days argument
-    if let Some(pos) = args.iter().position(|a| a == "--last-days") {
+    // Check for time-based arguments (--days, --hours, --minutes)
+    let seconds_to_go_back = if let Some(pos) = args.iter().position(|a| a == "--days") {
         let days: i64 = args
             .get(pos + 1)
             .and_then(|s| s.parse().ok())
-            .expect("--last-days requires a number");
+            .expect("--days requires a number");
+        Some(days * 86400)
+    } else if let Some(pos) = args.iter().position(|a| a == "--hours") {
+        let hours: i64 = args
+            .get(pos + 1)
+            .and_then(|s| s.parse().ok())
+            .expect("--hours requires a number");
+        Some(hours * 3600)
+    } else if let Some(pos) = args.iter().position(|a| a == "--minutes") {
+        let minutes: i64 = args
+            .get(pos + 1)
+            .and_then(|s| s.parse().ok())
+            .expect("--minutes requires a number");
+        Some(minutes * 60)
+    } else {
+        None
+    };
 
+    if let Some(seconds) = seconds_to_go_back {
         let api_key = env::var("ALCHEMY_API_KEY").expect("ALCHEMY_API_KEY not set");
         let client = HttpClient::new(Provider::Alchemy, Chain::Polygon, Some(&api_key)).await?;
         let current_block = client.get_block_number().await?;
 
         // Estimate blocks based on block time
-        let blocks_per_day = 86400 / POLYGON_BLOCK_TIME_SECS;
-        let blocks_to_go_back = (days * blocks_per_day) as u64;
+        let blocks_to_go_back = (seconds / POLYGON_BLOCK_TIME_SECS) as u64;
         let from_block = current_block.saturating_sub(blocks_to_go_back);
 
         return Ok((from_block, current_block));
@@ -137,14 +155,14 @@ async fn parse_block_range(args: &[String]) -> Result<(u64, u64)> {
         .position(|a| a == "--from-block")
         .and_then(|pos| args.get(pos + 1))
         .and_then(|s| s.parse().ok())
-        .expect("--from-block required (or use --last-days)");
+        .expect("--from-block required (or use --days/--hours/--minutes)");
 
     let to_block = args
         .iter()
         .position(|a| a == "--to-block")
         .and_then(|pos| args.get(pos + 1))
         .and_then(|s| s.parse().ok())
-        .expect("--to-block required (or use --last-days)");
+        .expect("--to-block required (or use --days/--hours/--minutes)");
 
     Ok((from_block, to_block))
 }
