@@ -20,7 +20,3 @@ chrono = { version = "0.4", features = ["serde"] }
 [[bin]]
 name = "market_backfill"
 path = "src/bin/market_backfill.rs"
-
-[[bin]]
-name = "test_db"
-path = "src/bin/test_db.rs"

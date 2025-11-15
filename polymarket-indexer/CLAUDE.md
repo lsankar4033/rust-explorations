@@ -1,10 +1,11 @@
-# Polymarket Indexer - System Overview
+# Polymarket Indexer
 
 ## Purpose
 
-A Rust-based indexer that captures Polymarket market creation events from Polygon blockchain and enriches them with metadata from Polymarket's Gamma API. Stores data in PostgreSQL for analysis.
+Indexes Polymarket markets and trades from the Polygon blockchain, enriched with metadata from Polymarket's Gamma API. Stores in PostgreSQL for analysis.
 
-Coming soon: indexing trades as well.
+**Current:** Market creation events with full metadata and tags
+**Coming soon:** Trade events
 
 ## Architecture
 
@@ -16,40 +17,20 @@ Polygon Blockchain → Parse Events → Enrich with Gamma API → PostgreSQL
                                                               tags
 ```
 
-## Current System Status
+## Status
 
 ### ✅ Complete
 
-- Event parsing (`TokenRegistered` from CTFExchange contract)
+- `TokenRegistered` event parsing (CTFExchange contract)
 - Gamma API client (market metadata + tags)
 - PostgreSQL schema with normalized tags
-- Market backfill job with deduplication
-- Local dev database setup
+- Market backfill job with deduplication and tag integration
 
-### 🔄 In Progress
+### 🔄 Next
 
-- Adding `pm_market_id` to markets table
-- Integrating tags into backfill pipeline
+- Trade event indexing
 
-## Data Flow
-
-### 1. Blockchain Events
-
-**Contract:** `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E` (CTFExchange on Polygon)
-**Event:** `TokenRegistered(token0, token1, conditionId)`
-
-Each event = one binary prediction market (YES/NO outcomes)
-
-### 2. Gamma API Enrichment
-
-**Endpoints:**
-
-- `/markets?condition_ids={conditionId}` - Market metadata
-- `/markets/{pm_market_id}/tags` - Market tags/categories
-
-**Important:** TokenRegistered events emit twice per market (tokens swapped). We deduplicate by `condition_id`.
-
-### 3. Database Schema
+## Database Schema
 
 ```sql
 markets                           tags
@@ -63,102 +44,37 @@ markets                           tags
                             └── pm_tag_id (FK)
 ```
 
-**Key Design:** Tags are normalized (separate table) to allow future tag metadata extensions without schema changes.
+**Key points:**
 
-## Binaries
+- CTFExchange contract: `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`
+- Each `TokenRegistered` event emits twice per market (tokens swapped) - deduplicate by `condition_id`
+- Tags are normalized for extensibility
 
-### `market_backfill`
+## Usage
 
-Indexes historical markets with flexible time ranges:
+### market_backfill
+
+Backfills historical markets with flexible time ranges:
 
 ```bash
+cargo run --bin market_backfill -- --hours 12
 cargo run --bin market_backfill -- --days 7
-cargo run --bin market_backfill -- --hours 6
-cargo run --bin market_backfill -- --minutes 30
 cargo run --bin market_backfill -- --from-block X --to-block Y
 ```
 
-Features:
+Idempotent - skips existing markets, handles missing metadata gracefully.
 
-- Deduplicates events (2 events → 1 market)
-- Skips existing markets (idempotent)
-- Fetches metadata + tags from Gamma API
-- Handles missing metadata gracefully
+## Development Notes
 
-### `stream` (TODO)
+**Schema changes:**
 
-Live event streaming via WebSocket
+1. Write migration in `migrations/`
+2. Run locally: `DATABASE_URL="..." sqlx migrate run`
+3. Update Rust code
+4. Generate cache: `cargo sqlx prepare`
+5. Run on prod: `DATABASE_URL="..." sqlx migrate run`
+6. Commit migrations + `.sqlx` directory
 
-### `test_db`
+**Editor setup:** Add `DATABASE_URL` to editor settings for live sqlx validation
 
-Quick database connection test
-
-## Development Workflow
-
-### Database Change Workflow
-
-When making schema changes, follow these steps in order:
-
-1. **Write migration** - Create SQL file in `migrations/YYYYMMDD_description.sql`
-2. **Update Rust code** - Modify models and queries to match new schema
-3. **Run migrations** - `DATABASE_URL="..." sqlx migrate run` (applies to local DB)
-4. **Regenerate sqlx cache** - `DATABASE_URL="..." cargo sqlx prepare` (updates `.sqlx/` for editor)
-5. **Verify** - Check editor shows no errors, code compiles
-6. **Commit both** - Git add both `migrations/` AND `.sqlx/` directories
-
-**Important:** Always commit the `.sqlx` directory with migrations! It enables offline compilation and CI/CD.
-
-### Local Development
-
-```bash
-# Database: postgresql://lakshmansankar@localhost/polymarket
-sqlx migrate run                # Apply migrations
-cargo sqlx prepare              # Regenerate .sqlx cache for editor
-cargo run --bin market_backfill -- --hours 1
-```
-
-Add DATABASE_URL env var to project editor settings (for sqlx syntax checking)
-
-### Production
-
-Switch `.env` to Neon database URL
-
-## Code Structure
-
-```
-src/
-├── client/
-│   ├── evm.rs          # Polygon RPC (HTTP/WebSocket)
-│   ├── gamma.rs        # Gamma API (markets + tags)
-│   └── mod.rs
-├── polymarket/
-│   ├── events.rs       # TokenRegistered parsing
-│   ├── market.rs       # Market + Tag structs (API models)
-│   ├── constants.rs    # Contract addresses, signatures
-│   └── mod.rs
-├── db/
-│   ├── markets.rs      # Market DB operations
-│   ├── market_tags.rs  # Tag DB operations
-│   ├── models.rs       # DB row models (Market, Tag, MarketTag)
-│   └── mod.rs
-└── bin/
-    ├── market_backfill.rs
-    ├── stream.rs
-    └── test_db.rs
-```
-
-## Resources
-
-- **Gamma API Docs:** https://docs.polymarket.com/
-- **CTFExchange:** `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`
-- **Test Block:** 78975130 (known market registrations)
-- **Polygon RPC:** Alchemy
-
-## Recovery Notes
-
-If context is lost:
-
-1. Check this file for system architecture
-2. Run `cargo run --bin test_db` to verify DB connection
-3. Check migrations in `migrations/` for current schema
-4. Review `market_backfill.rs` for current pipeline
+**Gamma API:** https://docs.polymarket.com/
