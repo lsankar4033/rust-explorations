@@ -1,5 +1,6 @@
 // Database module - PostgreSQL connection and operations
 
+pub mod market_tags;
 pub mod markets;
 pub mod models;
 

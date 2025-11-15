@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO market_tags (condition_id, pm_tag_id)\n            VALUES ($1, $2)\n            ON CONFLICT (condition_id, pm_tag_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0d4de7868b5d1e1cae9d5a333a8d2b4e7868cd3196523147942d2e17c0e20f5d"
+}

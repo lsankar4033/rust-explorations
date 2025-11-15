@@ -93,6 +93,19 @@ Quick database connection test
 
 ## Development Workflow
 
+### Database Change Workflow
+
+When making schema changes, follow these steps in order:
+
+1. **Write migration** - Create SQL file in `migrations/YYYYMMDD_description.sql`
+2. **Update Rust code** - Modify models and queries to match new schema
+3. **Run migrations** - `DATABASE_URL="..." sqlx migrate run` (applies to local DB)
+4. **Regenerate sqlx cache** - `DATABASE_URL="..." cargo sqlx prepare` (updates `.sqlx/` for editor)
+5. **Verify** - Check editor shows no errors, code compiles
+6. **Commit both** - Git add both `migrations/` AND `.sqlx/` directories
+
+**Important:** Always commit the `.sqlx` directory with migrations! It enables offline compilation and CI/CD.
+
 ### Local Development
 
 ```bash

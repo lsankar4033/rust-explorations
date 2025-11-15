@@ -3,7 +3,7 @@
 // Provides HTTP client for querying market information from:
 // https://gamma-api.polymarket.com
 
-use crate::polymarket::market::MarketMetadata;
+use crate::polymarket::market::{MarketMetadata, Tag};
 use eyre::Result;
 use reqwest::Client;
 use tracing::warn;
@@ -126,6 +126,31 @@ impl GammaClient {
                 }
             }
         }
+    }
+
+    /// Get tags for a market by Polymarket market ID
+    ///
+    /// # Arguments
+    /// * `market_id` - Polymarket's internal market ID (not condition_id)
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Tag>)` - List of tags (may be empty)
+    /// * `Err(_)` - Network or parsing error
+    pub async fn get_market_tags(&self, market_id: &str) -> Result<Vec<Tag>> {
+        let url = format!("{}/markets/{}/tags", self.base_url, market_id);
+
+        let response = self.client.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            warn!(
+                "Gamma API returned non-success status: {}",
+                response.status()
+            );
+            return Ok(Vec::new());
+        }
+
+        let tags: Vec<Tag> = response.json().await?;
+        Ok(tags)
     }
 }
 

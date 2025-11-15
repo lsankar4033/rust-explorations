@@ -28,8 +28,8 @@ pub struct Market {
     /// URL-friendly slug (from Gamma API)
     pub slug: Option<String>,
 
-    /// Market category (from Gamma API)
-    pub category: Option<String>,
+    /// Polymarket's internal market ID (from Gamma API)
+    pub pm_market_id: Option<String>,
 
     /// Outcome labels as JSON array (from Gamma API)
     pub outcomes: Option<JsonValue>,
@@ -48,4 +48,27 @@ pub struct Market {
 
     /// When metadata was fetched from Gamma API (null if not fetched)
     pub metadata_fetched_at: Option<DateTime<Utc>>,
+}
+
+/// Tag database row (stores tag metadata)
+#[derive(Debug, Clone, FromRow)]
+pub struct Tag {
+    /// Polymarket's internal tag ID
+    pub pm_tag_id: String,
+
+    /// Human-readable tag label
+    pub label: Option<String>,
+
+    /// URL-friendly tag slug
+    pub slug: Option<String>,
+}
+
+/// Market-Tag join table row (many-to-many relationship)
+#[derive(Debug, Clone, FromRow)]
+pub struct MarketTag {
+    /// Condition ID
+    pub condition_id: String,
+
+    /// Tag ID
+    pub pm_tag_id: String,
 }
