@@ -21,12 +21,13 @@ pub async fn upsert_market(
         r#"
         INSERT INTO markets (
             condition_id, token0, token1, block_number, tx_hash,
-            question, slug, outcomes, start_date, end_date,
+            question, slug, pm_market_id, outcomes, start_date, end_date,
             metadata_fetched_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (condition_id) DO UPDATE SET
             question = COALESCE(EXCLUDED.question, markets.question),
             slug = COALESCE(EXCLUDED.slug, markets.slug),
+            pm_market_id = COALESCE(EXCLUDED.pm_market_id, markets.pm_market_id),
             outcomes = COALESCE(EXCLUDED.outcomes, markets.outcomes),
             start_date = COALESCE(EXCLUDED.start_date, markets.start_date),
             end_date = COALESCE(EXCLUDED.end_date, markets.end_date),
@@ -40,6 +41,7 @@ pub async fn upsert_market(
         event.tx_hash,
         metadata.map(|m| m.question.as_str()),
         metadata.map(|m| m.slug.as_str()),
+        metadata.and_then(|m| m.id.as_deref()),
         outcomes_json,
         metadata.and_then(|m| m.start_date.as_ref().map(|s| s.as_str())),
         metadata.and_then(|m| m.end_date.as_ref().map(|s| s.as_str())),
