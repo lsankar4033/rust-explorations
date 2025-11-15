@@ -11,7 +11,7 @@ use eyre::Result;
 use polymarket_indexer::client::evm::HttpClient;
 use polymarket_indexer::client::gamma::GammaClient;
 use polymarket_indexer::client::{Chain, Provider};
-use polymarket_indexer::db::{create_pool, markets};
+use polymarket_indexer::db::{create_pool, market_tags, markets};
 use polymarket_indexer::polymarket::constants::{
     ctf_exchange_address, token_registered_event_signature,
 };
@@ -76,6 +76,8 @@ async fn main() -> Result<()> {
     let mut inserted = 0;
     let mut skipped = 0;
     let mut failed = 0;
+    let mut tags_inserted = 0;
+    let mut tags_failed = 0;
 
     for (condition_id, event) in unique_events {
         // Check if already in DB
@@ -104,6 +106,38 @@ async fn main() -> Result<()> {
         match markets::upsert_market(&db_pool, &event, metadata.as_ref()).await {
             Ok(_) => {
                 info!("✓ Inserted market {}", condition_id);
+
+                // Fetch and insert tags if we have a pm_market_id
+                if let Some(ref meta) = metadata {
+                    if let Some(ref market_id) = meta.id {
+                        match gamma_client.get_market_tags(market_id).await {
+                            Ok(tags) if !tags.is_empty() => {
+                                match market_tags::insert_market_tags(
+                                    &db_pool,
+                                    &condition_id,
+                                    &tags,
+                                )
+                                .await
+                                {
+                                    Ok(_) => {
+                                        info!("  ✓ Inserted {} tags", tags.len());
+                                        tags_inserted += tags.len();
+                                    }
+                                    Err(e) => {
+                                        warn!("  Failed to insert tags: {}", e);
+                                        tags_failed += 1;
+                                    }
+                                }
+                            }
+                            Ok(_) => {} // No tags, skip silently
+                            Err(e) => {
+                                warn!("  Failed to fetch tags: {}", e);
+                                tags_failed += 1;
+                            }
+                        }
+                    }
+                }
+
                 inserted += 1;
             }
             Err(e) => {
@@ -115,9 +149,11 @@ async fn main() -> Result<()> {
 
     // Summary
     info!("Backfill complete!");
-    info!("  Inserted: {}", inserted);
-    info!("  Skipped (already in DB): {}", skipped);
-    info!("  Failed: {}", failed);
+    info!("  Markets inserted: {}", inserted);
+    info!("  Markets skipped (already in DB): {}", skipped);
+    info!("  Markets failed: {}", failed);
+    info!("  Tags inserted: {}", tags_inserted);
+    info!("  Tags failed: {}", tags_failed);
 
     Ok(())
 }
