@@ -9,6 +9,10 @@ use serde::{de, Deserialize, Deserializer};
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketMetadata {
+    /// Polymarket's internal market ID
+    #[serde(default)]
+    pub id: Option<String>,
+
     /// The market question text
     pub question: String,
 
@@ -17,10 +21,6 @@ pub struct MarketMetadata {
 
     /// Condition ID (hex string with 0x prefix)
     pub condition_id: String,
-
-    /// Market category (e.g., "Politics", "Sports", "Crypto")
-    #[serde(default)]
-    pub category: String,
 
     /// Outcome labels (e.g., ["Yes", "No"] or ["Up", "Down"])
     /// API returns this as a JSON-encoded string, so we need custom deserialization
@@ -46,14 +46,29 @@ where
     serde_json::from_str(&s).map_err(de::Error::custom)
 }
 
+/// Tag associated with a market
+#[derive(Debug, Clone, Deserialize)]
+pub struct Tag {
+    /// Polymarket's internal tag ID
+    pub id: String,
+
+    /// Human-readable tag label
+    pub label: Option<String>,
+
+    /// URL-friendly tag slug
+    pub slug: Option<String>,
+}
+
 impl MarketMetadata {
     /// Pretty-print market metadata
     pub fn display(&self) {
         println!("=================================");
         println!("Market Metadata");
+        if let Some(id) = &self.id {
+            println!("  PM Market ID: {}", id);
+        }
         println!("  Question: {}", self.question);
         println!("  Slug: {}", self.slug);
-        println!("  Category: {}", self.category);
         println!("  Outcomes: {:?}", self.outcomes);
         if let Some(start) = &self.start_date {
             println!("  Start Date: {}", start);
