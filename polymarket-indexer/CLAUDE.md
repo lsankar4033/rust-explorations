@@ -4,6 +4,8 @@
 
 A Rust-based indexer that captures Polymarket market creation events from Polygon blockchain and enriches them with metadata from Polymarket's Gamma API. Stores data in PostgreSQL for analysis.
 
+Coming soon: indexing trades as well.
+
 ## Architecture
 
 ```
@@ -115,17 +117,7 @@ cargo sqlx prepare              # Regenerate .sqlx cache for editor
 cargo run --bin market_backfill -- --hours 1
 ```
 
-### Editor Setup (Zed)
-
-```json
-{
-  "cargo": {
-    "extraEnv": {
-      "SQLX_OFFLINE": "true" // Uses .sqlx cache
-    }
-  }
-}
-```
+Add DATABASE_URL env var to project editor settings (for sqlx syntax checking)
 
 ### Production
 
@@ -153,33 +145,6 @@ src/
     ├── market_backfill.rs
     ├── stream.rs
     └── test_db.rs
-```
-
-## Key Implementation Details
-
-### Deduplication
-
-Each market emits 2 `TokenRegistered` events with swapped `token0`/`token1`. We use a `HashMap<condition_id, event>` to deduplicate before processing.
-
-### Tag Normalization
-
-- `tags` table: Single source of truth for tag metadata
-- `market_tags` table: Pure join table (many-to-many)
-- Insert pattern: Upsert tag → insert relationship
-- Query pattern: Simple JOIN to get tags for a market
-
-### sqlx Integration
-
-- Compile-time SQL verification via `.sqlx` cache
-- Run `cargo sqlx prepare` after schema changes
-- Editor uses `SQLX_OFFLINE=true` for instant feedback
-
-### Tokio Features
-
-Minimal feature set (not "full"):
-
-```toml
-tokio = { features = ["rt-multi-thread", "macros", "signal"] }
 ```
 
 ## Resources
